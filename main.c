@@ -38,6 +38,7 @@ int main(void)
     uint adr = 0;
     int vmin = 1450; //centivolts; used for range checking
     int vmax = 2350; //centivolts; used for range checking
+    int vHighTemp = 1550; //centivolts; set to 55 deg C for testing. TODO: include a chart with temp settings
     
 	/* Voltages across reference resistor and thermistor*/
 	int16 vSense[numAdcChannels];
@@ -58,11 +59,80 @@ int main(void)
 	ADC_SAR_Seq_1_Start();
     EEPROM_1_Start();
     UART_Start();
-    
    
-	
-
+    /*State Machine Implementation */
+    
+    /*Define States*/
+     enum tempSenseStates {
+            MEASURE,
+            CALCULATE,
+            DATA_TRANSFER,
+            SENSOR_FAULT,
+            SHUTDOWN,
+            REPORT_HOTSPOT,        //Used after shutdown to report a hotspot
+            REPORT_SENSORFAULT,     //Used after shutdown to report a sensor fault
+            DEFAULT
+        };
+        
+    /*Initialize State Machine*/
+    enum tempSenseStates state = MEASURE;
+    
+    //This will be used to determine if shutdown was triggered by an over temperature or sensor fault
+    enum tempSenseStates previousState = MEASURE; 
+    
 	for(;;)
+    {
+        switch(state)
+        {
+            case MEASURE:
+            
+                /* Measure Voltage Across All Temperature Sensors*/
+                i = 0;      //Reset the channel counter THIS WONT WORK FOR 
+                while(i<numAdcChannels){
+    	            vSense[i] = MeasureSensorVoltage(i); 
+                    if (vSense[i] <= vHighTemp){
+                        previousState = state;
+                        state = SHUTDOWN;
+                    }else{
+                        //continue measurement; sensor faults will all be recorded at once in an array durring calculate?
+                    }
+                    i++;
+                    //TODO - if a voltage is measured < 1.51 (60 C), the relay will be flipped - need state machine
+                }
+            
+            break;
+            
+            case CALCULATE:
+            
+            break;
+            
+            case DATA_TRANSFER:
+            
+            break;
+            
+            case SENSOR_FAULT:
+            
+            break;
+            
+            case SHUTDOWN:
+            
+            break;
+            
+            case REPORT_HOTSPOT:
+            
+            break;
+            
+            case REPORT_SENSORFAULT:
+            
+            break;
+                
+            case DEFAULT:
+                // should never get here - possibly include shutdown code here? 
+            break;
+        }
+    }
+    
+    
     {
     	/* Measure Voltage Across All Temperature Sensors*/
         i = 0;      //Reset the channel counter THIS WONT WORK FOR 
@@ -77,7 +147,7 @@ int main(void)
         i = 0; 
         adr = 2;
         
-        //Ensure that voltage measured is in range
+        //TODO: Ensure that voltage measured is in range
     	while(i<numAdcChannels){
             //TODO - SEARCH FOR first voltage > read in voltage, increment 1 and that is the temp
             // 180 entries in EEPROM, even are voltages, odd are temps
